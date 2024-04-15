@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chart.js Example</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div style="text-align: center; border: 1px solid #ccc; padding: 10px; max-width: 400px; margin: auto;">
+        <div style="margin-bottom: 20px;">
+            <canvas id="myChart" width="400" height="300"></canvas>
+        </div>
+        <div>
+            <button id="startButton">Démarrer</button>
+        </div>
+    </div>
+
+    <script>
+        let myChart;
+
+        const destroyChart = () => {
+            if (myChart) {
+                myChart.destroy();
+            }
+        };
+
+        const startButton = document.getElementById("startButton");
+        startButton.addEventListener("click", async () => {
+            const urls = [
+                "https://www.ewebsolutions.fr",
+                "https://www.ewebsolutions.fr/#services",
+                "https://www.ewebsolutions.fr/#realisations",
+                "https://boutique-ewebsolutions.fr/",
+                "https://www.ewebsolutions.fr/#contact"
+            ];
+
+            // Commencer la récupération des données
+            await updateChartData(urls);
+        });
+
+        const updateChartData = async (urls) => {
+            if (urls.length === 0) {
+                // Arrêter la récursion si tous les URLs ont été traités
+                return;
+            }
+
+            // Récupérer le premier URL de la liste
+            const url = urls.shift();
+
+            // Récupérer les données de l'URL
+            const chartData = await fetchAndUpdateChartData(url);
+
+            // Mettre à jour le graphique avec les données récupérées
+            updateChart(chartData);
+
+            // Attendre un clic sur le bouton avant de passer à l'URL suivante
+            await new Promise(resolve => {
+                startButton.addEventListener("click", resolve, { once: true });
+            });
+
+            // Récursivement, récupérer les données des URLs restants
+            await updateChartData(urls);
+        };
+
+        const fetchAndUpdateChartData = async (url) => {
+            try {
+                const response = await fetch(`https://sarabahassou.github.io/api/informations.json`);
+                const data = await response.json();
+
+                const pageData = data.find(page => page.url === url);
+
+                if (!pageData) {
+                    console.error('Erreur: Aucune donnée récupérée pour cette URL.');
+                    return null;
+                }
+
+                // Obtenir le titre de la page à partir de l'URL
+                const pageTitle = getPageTitle(url);
+
+                const chartData = {
+                    label: pageTitle,
+                    data: [
+                        pageData.styles ? pageData.styles : 0,
+                        pageData.scripts ? pageData.scripts : 0,
+                        pageData.images ? pageData.images : 0,
+                        pageData.internalLinks ? pageData.internalLinks : 0,
+                        pageData.externalLinks ? pageData.externalLinks : 0,
+                        pageData.computedStyles ? pageData.computedStyles : 0
+                    ],
+                    backgroundColor: ["#00AA00", "#00AA00", "#00AA00", "#00AA00", "#00AA00", "#00AA00", "#00AA00"],
+                    barThickness: 15
+                };
+
+                return chartData;
+            } catch (error) {
+                console.error('Erreur lors de la récupération des données:', error);
+                return null;
+            }
+        };
+
+        const updateChart = (chartData) => {
+            destroyChart();
+
+            const ctx = document.getElementById('myChart').getContext('2d');
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ["Styles", "Scripts", "Images", "Internal Links", "External Links", "Computed Styles"],
+                    datasets: [chartData]
+                },
+                options: {
+                    indexAxis: 'y', // Mettre l'axe des x en axe des y
+                    scales: {
+                        y: {
+                            display: true, // Afficher l'axe des x
+                            ticks: {
+                                autoSkip: false
+                            }
+                        },
+                        x: {
+                            display: false // Masquer l'axe des y
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        };
+
+        // Fonction pour obtenir le titre de la page à partir de l'URL
+        const getPageTitle = (url) => {
+            const pageTitles = {
+                "https://www.ewebsolutions.fr": "Accueil",
+                "https://www.ewebsolutions.fr/#services": "Services",
+                "https://www.ewebsolutions.fr/#realisations": "Réalisations",
+                "https://boutique-ewebsolutions.fr/": "Boutique",
+                "https://www.ewebsolutions.fr/#contact": "Contact"
+            };
+
+            return pageTitles[url] || "Inconnu";
+        };
+    </script>
+</body>
+</html>
